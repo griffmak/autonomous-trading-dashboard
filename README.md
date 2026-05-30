@@ -4,7 +4,7 @@
 
 **Live URL:** https://autonomous-trading-dashboard.vercel.app (password-gated, single-user)
 
-This dashboard is the read-only front end for the [Autonomous Trading System](https://github.com/griffmak/autonomous-trading-dashboard) — a separate project that generates trade signals, executes trades on Alpaca, and writes them to Supabase. This app reads that data and renders it; it never places trades.
+This dashboard is the read-only front end for the [Autonomous Trading System](https://github.com/griffmak/autonomous-trading-signals) — a separate project that generates trade signals, executes trades on Alpaca, and writes them to Supabase. This app reads that data and renders it; it never places trades.
 
 ---
 
@@ -38,7 +38,7 @@ Five pages, each behind the password gate:
 ### Prerequisites
 
 - **Node.js 20+** (Next.js 16 requirement)
-- A **Supabase project** containing the `signals` and `trades` tables. These tables are owned by the [Autonomous Trading System](https://github.com/griffmak/autonomous-trading-dashboard) project — see its wiki page for the table schemas. This dashboard only reads from them.
+- A **Supabase project** containing the `signals` and `trades` tables. These tables are owned by the [Autonomous Trading System](https://github.com/griffmak/autonomous-trading-signals) project — see its wiki page for the table schemas. This dashboard only reads from them.
 - An **Alpaca paper-trading account** with API key + secret (https://alpaca.markets).
 
 ### Setup

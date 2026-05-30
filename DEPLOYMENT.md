@@ -13,10 +13,45 @@ Read both before you start.
 
 ## 1. Prerequisites
 
-- **A Supabase project** with the `signals` and `trades` tables already created. These tables are owned by the [Autonomous Trading System](https://github.com/griffmak/autonomous-trading-dashboard) project — see its wiki page for the canonical table schemas. This dashboard only reads from them.
+- **A Supabase project** with the `signals` and `trades` tables already created. These tables are owned by the [Autonomous Trading System](https://github.com/griffmak/autonomous-trading-signals) project — see its wiki page for the canonical table schemas. This dashboard only reads from them.
 - **An Alpaca paper-trading account** with an API key ID and secret (https://alpaca.markets → Paper Trading → API keys).
 - **A GitHub account.**
 - **A Vercel account** (the free Hobby tier is sufficient).
+
+### Required Supabase tables
+
+The dashboard reads two tables, `signals` and `trades`. They are owned and written by the [Autonomous Trading System](https://github.com/griffmak/autonomous-trading-signals) — **that repo is the canonical source of truth for the schema.** If you're deploying the dashboard on its own, create the tables yourself using the reference below (derived from the dashboard's TypeScript types). **The dashboard will not render any data until both tables exist.**
+
+```sql
+-- signals: generated buy/sell/hold signals the dashboard reads
+CREATE TABLE signals (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticker      text        NOT NULL,
+  signal      text        NOT NULL,  -- 'Buy' | 'Sell' | 'Hold'
+  confidence  numeric     NOT NULL,
+  rationale   text        NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  status      text                    -- optional
+);
+
+-- trades: executed/rejected trades with entry + (nullable) exit fields
+CREATE TABLE trades (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticker            text        NOT NULL,
+  execution_status  text        NOT NULL,  -- 'executed' | 'rejected'
+  entry_price       numeric     NOT NULL,
+  entry_qty         numeric     NOT NULL,
+  entry_time        timestamptz NOT NULL,
+  exit_price        numeric,               -- null while position is open
+  exit_time         timestamptz,           -- null while position is open
+  exit_status       text,                  -- null while position is open
+  realized_pnl      numeric,               -- null while position is open
+  exit_order_id     text,                  -- null while position is open
+  created_at        timestamptz NOT NULL DEFAULT now()
+);
+```
+
+Column names and nullability mirror `lib/supabase.ts`. The open-position vs. closed-trade distinction the dashboard relies on is `execution_status = 'executed'` with `exit_status` null (open) or non-null (closed).
 
 ---
 
@@ -116,6 +151,8 @@ CREATE POLICY "anon read" ON trades
 ```
 
 The anon role now has read-only access; no INSERT/UPDATE/DELETE policy means those are denied. The service-role writer bypasses RLS and keeps writing.
+
+> Note: `USING (true)` exposes **every row** to the anon (public) role — intended here for a single-user, read-only dashboard. On a multi-tenant table, scope it instead (e.g. `USING (user_id = auth.uid())`).
 
 > ⚠️ **Order matters.** Confirm the writer uses a service-role key first. If you enable RLS while the writer is still using the anon key, all trade writes will break.
 

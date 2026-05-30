@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { env } from '@/lib/env'
+import { serverEnv } from '@/lib/env.server'
 
 export async function POST(request: NextRequest) {
   let body: { password?: string }
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Password required' }, { status: 400 })
   }
 
-  if (password !== env.DASHBOARD_PASSWORD_SECRET) {
+  if (password !== serverEnv.DASHBOARD_PASSWORD_SECRET) {
     return NextResponse.json(
       { error: 'Invalid password' },
       { status: 401 }

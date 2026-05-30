@@ -1,5 +1,5 @@
 import 'server-only'
-import { env } from './env'
+import { serverEnv } from './env.server'
 
 export type AlpacaPosition = {
   symbol: string
@@ -14,14 +14,14 @@ export type AlpacaPosition = {
 }
 
 export async function getAlpacaPositions(): Promise<AlpacaPosition[]> {
-  const url = `${env.ALPACA_BASE_URL}/positions`
+  const url = `${serverEnv.ALPACA_BASE_URL}/positions`
 
   let response: Response
   try {
     response = await fetch(url, {
       headers: {
-        'APCA-API-KEY-ID': env.ALPACA_API_KEY,
-        'APCA-API-SECRET-KEY': env.ALPACA_SECRET_KEY,
+        'APCA-API-KEY-ID': serverEnv.ALPACA_API_KEY,
+        'APCA-API-SECRET-KEY': serverEnv.ALPACA_SECRET_KEY,
       },
       cache: 'no-store',
       signal: AbortSignal.timeout(5000),

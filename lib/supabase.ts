@@ -75,6 +75,7 @@ export async function getClosedTrades(): Promise<Trade[]> {
     .select('*')
     .eq('execution_status', 'executed')
     .not('exit_status', 'is', null)
+    .not('realized_pnl', 'is', null)
     .order('exit_time', { ascending: false })
 
   if (error) throw error

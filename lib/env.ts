@@ -1,13 +1,16 @@
 import { z } from 'zod'
 
-const envSchema = z.object({
+// CLIENT-SAFE env module: validates ONLY the two public vars.
+// Referenced explicitly (not via process.env parse) so Next can inline them
+// and so no server secret names or top-level process.env parse ship to the browser.
+const clientSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url('Invalid Supabase URL'),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string(),
-  DASHBOARD_PASSWORD_SECRET: z.string(),
-  ALPACA_API_KEY: z.string(),
-  ALPACA_SECRET_KEY: z.string(),
-  ALPACA_BASE_URL: z.string().url('Invalid Alpaca base URL').default('https://paper-api.alpaca.markets/v2'),
 })
 
-export const env = envSchema.parse(process.env)
-export type Env = z.infer<typeof envSchema>
+export const env = clientSchema.parse({
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+})
+
+export type Env = z.infer<typeof clientSchema>

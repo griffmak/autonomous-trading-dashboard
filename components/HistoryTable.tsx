@@ -1,20 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getClosedTrades, subscribeToTrades, unsubscribe, type Trade } from '@/lib/supabase'
+import { fetchClosedTrades } from '@/lib/fetchers'
+import type { Trade } from '@/lib/types'
 import { formatPrice, formatPnL, getPnLColor, formatHoldDuration } from '@/lib/utils'
 
-// Slow full re-fetch backup; real-time subscription handles instant updates.
+// Polling cadence. Realtime subscriptions were removed when RLS was enabled
+// (the anon role is denied, so client-side Supabase realtime no longer streams).
 const POLL_INTERVAL_MS = 300_000
-
-// A trade belongs in history only once it is canonically closed.
-function isClosedTrade(trade: Trade): boolean {
-  return (
-    trade.execution_status === 'executed' &&
-    trade.exit_status != null &&
-    trade.realized_pnl != null
-  )
-}
 
 export function HistoryTable() {
   const [trades, setTrades] = useState<Trade[]>([])
@@ -26,7 +19,7 @@ export function HistoryTable() {
 
     const load = async () => {
       try {
-        const data = await getClosedTrades()
+        const data = await fetchClosedTrades()
         if (!cancelled) {
           setTrades(data)
           setError('')
@@ -43,17 +36,9 @@ export function HistoryTable() {
     load()
     const interval = setInterval(load, POLL_INTERVAL_MS)
 
-    // subscribeToTrades fires on ALL trade changes; only merge canonically
-    // closed trades into history. The 5-min re-fetch is the source of truth.
-    const subscription = subscribeToTrades((newTrade) => {
-      if (cancelled || !isClosedTrade(newTrade)) return
-      setTrades((prev) => [newTrade, ...prev.filter((t) => t.id !== newTrade.id)])
-    })
-
     return () => {
       cancelled = true
       clearInterval(interval)
-      unsubscribe(subscription)
     }
   }, [])
 

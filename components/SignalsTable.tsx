@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getSignals, subscribeToSignals, unsubscribe, type Signal } from '@/lib/supabase'
+import { fetchSignals } from '@/lib/fetchers'
+import type { Signal } from '@/lib/types'
 import { formatConfidence, formatRelativeTime, getSignalColor } from '@/lib/utils'
 
-// Slow full re-fetch backup; real-time subscription handles instant updates.
+// Polling cadence. Realtime subscriptions were removed when RLS was enabled
+// (the anon role is denied, so client-side Supabase realtime no longer streams).
 const POLL_INTERVAL_MS = 300_000
 
 export function SignalsTable() {
@@ -17,7 +19,7 @@ export function SignalsTable() {
 
     const load = async () => {
       try {
-        const data = await getSignals()
+        const data = await fetchSignals()
         if (!cancelled) {
           setSignals(data)
           setError('')
@@ -34,16 +36,9 @@ export function SignalsTable() {
     load()
     const interval = setInterval(load, POLL_INTERVAL_MS)
 
-    const subscription = subscribeToSignals((newSignal) => {
-      if (cancelled) return
-      // Intentional: '*' events mean an UPDATE re-surfaces an old signal to row 0; the 5-min poll re-sorts.
-      setSignals((prev) => [newSignal, ...prev.filter((s) => s.id !== newSignal.id)])
-    })
-
     return () => {
       cancelled = true
       clearInterval(interval)
-      unsubscribe(subscription)
     }
   }, [])
 

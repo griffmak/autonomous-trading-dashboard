@@ -14,11 +14,13 @@ import {
   type ChartOptions,
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
-import { getTrades, subscribeToTrades, unsubscribe, type Trade } from '@/lib/supabase'
+import { fetchTrades } from '@/lib/fetchers'
+import type { Trade } from '@/lib/types'
 import { formatPnL, formatPrice, formatPercent, getPnLColor } from '@/lib/utils'
 import OverviewCard from '@/components/OverviewCard'
 
-// Slow full re-fetch backup; real-time subscription handles instant updates.
+// Polling cadence. Realtime subscriptions were removed when RLS was enabled
+// (the anon role is denied, so client-side Supabase realtime no longer streams).
 const POLL_INTERVAL_MS = 300_000
 
 ChartJS.register(
@@ -44,7 +46,7 @@ export function PerfChart() {
 
     const load = async () => {
       try {
-        const data = await getTrades()
+        const data = await fetchTrades()
         if (!cancelled) {
           setTrades(data)
           setError('')
@@ -61,18 +63,9 @@ export function PerfChart() {
     load()
     const interval = setInterval(load, POLL_INTERVAL_MS)
 
-    // subscribeToTrades fires on ALL trade changes. Merge the changed row into
-    // the trades state; the useMemo below re-derives closed-trade metrics + chart.
-    // The 5-min re-fetch is the source of truth.
-    const subscription = subscribeToTrades((newTrade) => {
-      if (cancelled) return
-      setTrades((prev) => [newTrade, ...prev.filter((t) => t.id !== newTrade.id)])
-    })
-
     return () => {
       cancelled = true
       clearInterval(interval)
-      unsubscribe(subscription)
     }
   }, [])
 

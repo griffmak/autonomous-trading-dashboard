@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getOpenPositions, subscribeToTrades, unsubscribe, type Trade } from '@/lib/supabase'
+import { fetchOpenPositions } from '@/lib/fetchers'
+import type { Trade } from '@/lib/types'
 import {
   formatPrice,
   formatPnL,
@@ -23,15 +24,11 @@ type AlpacaPosition = {
 
 type LivePriceMap = Record<string, { currentPrice: number; unrealizedPnL: number }>
 
-// Supabase open-positions backup re-fetch; subscription handles instant updates.
+// Supabase open-positions poll. Realtime subscriptions were removed when RLS was
+// enabled (anon role denied → client-side realtime no longer streams).
 const POSITIONS_POLL_MS = 300_000
 // Alpaca live-price poll — no real-time channel exists; keep current cadence.
 const LIVE_PRICE_POLL_MS = 10_000
-
-// A trade is an open position only while it has no exit yet.
-function isOpenPosition(trade: Trade): boolean {
-  return trade.execution_status === 'executed' && trade.exit_status == null
-}
 
 async function fetchLivePrices(): Promise<LivePriceMap> {
   const res = await fetch('/api/positions', { cache: 'no-store' })
@@ -65,7 +62,7 @@ export function PositionsTable() {
     const loadPositions = async () => {
       const reqId = ++positionsReqId
       try {
-        const data = await getOpenPositions()
+        const data = await fetchOpenPositions()
         if (cancelled || reqId !== positionsReqId) return
         setPositions(data)
         setError('')
@@ -96,22 +93,10 @@ export function PositionsTable() {
     const positionsInterval = setInterval(loadPositions, POSITIONS_POLL_MS)
     const livePriceInterval = setInterval(loadLivePrices, LIVE_PRICE_POLL_MS)
 
-    // Real-time Supabase open-positions sync only — does NOT touch Alpaca
-    // live prices or the request-id guard. A trade that opens is merged in;
-    // one that closes (gets an exit) is removed from the open list.
-    const subscription = subscribeToTrades((trade) => {
-      if (cancelled) return
-      setPositions((prev) => {
-        const without = prev.filter((p) => p.id !== trade.id)
-        return isOpenPosition(trade) ? [trade, ...without] : without
-      })
-    })
-
     return () => {
       cancelled = true
       clearInterval(positionsInterval)
       clearInterval(livePriceInterval)
-      unsubscribe(subscription)
     }
   }, [])
 

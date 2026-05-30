@@ -3,12 +3,8 @@
 import { useEffect, useState } from 'react'
 import Navbar from '@/components/Navbar'
 import OverviewCard from '@/components/OverviewCard'
-import {
-  getOpenPositions,
-  getSignals,
-  type Signal,
-  type Trade,
-} from '@/lib/supabase'
+import { fetchOpenPositions, fetchSignals } from '@/lib/fetchers'
+import type { Signal, Trade } from '@/lib/types'
 import {
   formatConfidence,
   formatPrice,
@@ -25,7 +21,7 @@ export default function OverviewPage() {
   useEffect(() => {
     let cancelled = false
 
-    Promise.all([getOpenPositions(), getSignals()])
+    Promise.all([fetchOpenPositions(), fetchSignals()])
       .then(([positions, sigs]) => {
         if (cancelled) return
         setOpenPositions(positions)
